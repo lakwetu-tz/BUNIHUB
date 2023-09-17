@@ -8,7 +8,7 @@ SoftwareSerial gprs(12, 13);
 #include <ArduinoHttpClient.h>
 TinyGsm modem(gprs);
 TinyGsmClient client(modem);
-HttpClient http = HttpClient(client, "server-ngwala-dispense.herokuapp.com", 80);
+HttpClient http = HttpClient(client, "server-bunihub.herokuapp.com/api/transit", 80);
 
 #define SS_PIN 10
 #define RST_PIN 9
@@ -30,13 +30,13 @@ void setup() {
   pinMode(LED_GREEN, OUTPUT);
   pinMode(BUZZER, OUTPUT);
 
-  Serial.println(F("HOTEL CASHLESS PAYMENT SYSTEM"));
+  Serial.println(F("Transit Payment System"));
   delay(2000);
 
   Serial.println(F("Connecting to Internet ..."));
   if (modem.gprsConnect("", "", "")) {
-      Serial.print(" success");
-      delay(1000);         
+    Serial.print(" success");
+    delay(1000);
   }
 }
 
@@ -47,40 +47,40 @@ void loop() {
     Serial.print(F("LED_RED ON"));
     Control(LED_RED);
 
-  if (modem.isGprsConnected()) {
-    Serial.print(F("LED_GREEN ON"));
-    Control(LED_GREEN);
+    if (modem.isGprsConnected()) {
+      Serial.print(F("LED_GREEN ON"));
+      Control(LED_GREEN);
 
-    Serial.println("Making POST request...");
+      Serial.println("Making POST request...");
 
-    String contentType = "application/json";
-    String postData = GenerateJsonData();
+      String contentType = "application/json";
+      String postData = GenerateJsonData();
 
-    int err = http.post("/api/bus/", contentType, postData);
+      int err = http.post("/api/bus/", contentType, postData);
 
-    if (err != 0) {
-      Serial.println(F("failed to connect"));
-      delay(10000);
-      return;
+      if (err != 0) {
+        Serial.println(F("failed to connect"));
+        delay(10000);
+        return;
+      }
+
+      int status = http.responseStatusCode();
+      Serial.print(F("Response status code: "));
+      Serial.println(status);
+
+      String response = http.responseBody();
+      Serial.println(F("Response:"));
+      Serial.println(response);
+
+      if (status == 200) {
+        Serial.println(F("Setting Buzzer High"));
+        Control(BUZZER);
+      }
+
+      http.stop();
+      Serial.println(F("Server disconnected"));
     }
-
-    int status = http.responseStatusCode();
-    Serial.print(F("Response status code: "));
-    Serial.println(status);
-  
-    String response = http.responseBody();
-    Serial.println(F("Response:"));
-    Serial.println(response);
-
-    if (status == 200){
-      Serial.println(F("Setting Buzzer High"));
-      Control(BUZZER);
-    }
-
-  http.stop();
-  Serial.println(F("Server disconnected"));
-}
-}
+  }
 }
 
 String GenerateJsonData() {
@@ -93,13 +93,12 @@ String GenerateJsonData() {
   return aux;
 }
 
-void Control(int comp){
+void Control(int comp) {
   digitalWrite(comp, HIGH);
   delay(2000);
   Serial.print(F("LED_RED OFF"));
   digitalWrite(comp, LOW);
   delay(2000);
-
 }
 
 boolean MFRC522_Reader() {

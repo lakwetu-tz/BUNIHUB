@@ -60,7 +60,7 @@ void loop() {
     sim800.println("AT+HTTPPARA=?");
     sim800.println("AT+HTTPPARA=CID,1");
     delay(800);
-    sim800.println("AT+HTTPPARA=URL, http://endpoint.com/api/mainboard/values");
+    sim800.println("AT+HTTPPARA=URL, http://server-bunihub.heroku.com/api/hotel");
     delay(2000);
     sim800.println("AT+HTTPPARA=CONTENT-TYPE, application/json");
     sim800.print("AT+HTTPDATA=");
