@@ -12,7 +12,7 @@ SoftwareSerial sim800(12, 13);
 MFRC522 reader(SS_PIN, RST_PIN);
 
 bool success_read = false;
-String userId = "";
+
 
 void setup() {
   SPI.begin();
@@ -34,57 +34,60 @@ void loop() {
   success_read = MFRC522_Reader();
   if (success_read == true) {
     Serial.print(F("Buzzer ON"));
-    digitalWrite(12, HIGH);
+    digitalWrite(BUZZER, HIGH);
     delay(2000);
     Serial.print(F("Buzzer OFF"));
-    digitalWrite(12, LOW);
+    digitalWrite(BUZZER, LOW);
     delay(2000);
 
     String jsonData = GenerateJsonData();
     String apn = "";
+    String apn_u = "";
+    String apn_p = "";
+    String url = "http://unieats.000webhostapp.com/api/index.php";
 
-    sim800.println("AT");
-    delay(100);
-    sim800.println("AT+CREG?");
-    delay(500);
-    sim800.println("AT+SAPBR=3,1,Contype,GPRS");
-    delay(800);
-    sim800.println("AT+SAPBR=3,1,APN," + apn);
-    delay(800);
-    sim800.println("AT+SAPBR =1,1");
-    delay(800);
-    sim800.println("AT+SAPBR=2,1");
-    delay(800);
-    sim800.println("AT+HTTPINIT");
-    delay(800);
-    sim800.println("AT+HTTPPARA=?");
-    sim800.println("AT+HTTPPARA=CID,1");
-    delay(800);
-    sim800.println("AT+HTTPPARA=URL, http://server-bunihub.heroku.com/api/hotel");
-    delay(2000);
-    sim800.println("AT+HTTPPARA=CONTENT-TYPE, application/json");
-    sim800.print("AT+HTTPDATA=");
-    sim800.println(jsonData.length() + 2);  // Add 2 for extra bytes
-    delay(100);
-    sim800.println(jsonData);
-    delay(100);
-    sim800.println("AT+HTTPACTION=1");  // Send HTTP POST request
-    delay(5000);
+sim800.write("AT\r");
+  printresponse(4000);
+  sim800.write("AT+SAPBR=3,1,Contype,GPRS");
+  printresponse(100);
+  sim800.print("AT+SAPBR=3,1,APN," + apn);
+  printresponse(100);
+  sim800.print("AT+SAPBR=3,1,USER," + apn_u);
+  printresponse(100);
+  sim800.print("AT+SAPBR=3,1,PWD," + apn_p);
+  printresponse(100);
+  sim800.print("AT+SAPBR=1,1");
+  printresponse(100);
+  sim800.print("AT+SAPBR=2,1");
+  printresponse(2000);
+  sim800.print("AT+HTTPINIT");
+  printresponse(100);
+  sim800.print("AT+HTTPPARA=CID,1");
+  printresponse(100);
+  sim800.print("AT+HTTPPARA=URL," + url);
+  printresponse(100);
+  sim800.print("AT+HTTPPARA=CONTENT-application/json," + url);
+  printresponse(500);
+  sim800.print("params=" + jsonData);
+  printresponse(10000);
+  sim800.print("AT+HTTPACTION=1");
+  printresponse(5000);
+  sim800.print("AT+HTTPREAD");
+  printresponse(100);
+  sim800.print("AT+HTTPTERM");
+  printresponse(100);
 
-    // Sending sms as the risiti
+  // Sending sms as the risiti
 
-    while (sim800.available() != 0) {
-      Serial.write(sim800.read());
-    }
-  }
 }
 
 String GenerateJsonData() {
-  String fare = "500";
-  String aux = "{\n\t\"userId\":\"";
-  aux.concat(String(userId));
-  aux.concat("\",\n\t\"fare\":\"");
-  aux.concat(String(fare));
+  String type = "processPayment";
+
+  String aux = "{\n\t\"type\":\"";
+  aux.concat(String(type));
+  aux.concat("\",\n\t\"card_number\":\"");
+  aux.concat(String(uid));
   aux.concat("\n}");
   return aux;
 }
@@ -97,12 +100,29 @@ boolean MFRC522_Reader() {
     if (!reader.PICC_ReadCardSerial()) {
       return false;
     }
-    Serial.println(userId);
+
+    Serial.println(uid);
     for (uint8_t i = 0; i < 4; i++) {
-      userId.concat(String(reader.uid.uidByte[i], DEC));
+      uid.concat(String(reader.uid.uidByte[i], DEC));
     }
-    userId.toUpperCase();
+    uid.toUpperCase();
     reader.PICC_HaltA();
     return true;
+  }
+}
+
+void printresponse(int del) {
+  int status_code;
+  if (sim800.available()>0) {
+    Serial.println(sim800.readString());
+    char c = sim800.read();
+    status_code += c
+  }
+
+  delay(del);
+
+  if (response == 200){
+    digitalWrite(LED_GREEN HIGH);
+    delay(5000);
   }
 }

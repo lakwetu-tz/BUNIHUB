@@ -45,11 +45,11 @@ void loop() {
   success_read = MFRC522_Reader();
   if (success_read == true) {
     Serial.print(F("LED_RED ON"));
-    Control(LED_RED);
+    Control(BUZZER);
 
     if (modem.isGprsConnected()) {
       Serial.print(F("LED_GREEN ON"));
-      Control(LED_GREEN);
+      Control(LED_RED);
 
       Serial.println("Making POST request...");
 
@@ -74,7 +74,7 @@ void loop() {
 
       if (status == 200) {
         Serial.println(F("Setting Buzzer High"));
-        Control(BUZZER);
+        Control(LED_GREEN);
       }
 
       http.stop();
