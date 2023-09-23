@@ -1,36 +1,33 @@
 #include <SPI.h>
 #include <MFRC522.h>
-#include <SoftwareSerial.h>
-SoftwareSerial gprs(12, 13);
+
 
 #define TINY_GSM_MODEM_SIM800
 #include <TinyGsmClient.h>
 #include <ArduinoHttpClient.h>
-TinyGsm modem(gprs);
+TinyGsm modem(Serial);
 TinyGsmClient client(modem);
-HttpClient http = HttpClient(client, "server-bunihub.herokuapp.com/api/transit", 80);
+HttpClient http = HttpClient(client, "missing url", 80); // Replace missing url with actual url
 
 #define SS_PIN 10
 #define RST_PIN 9
 #define BUZZER 6
-#define LED_RED 8
-#define LED_GREEN 7
+#define LED_GREEN 8
+#define LED_BLUE 7
 
 MFRC522 reader(SS_PIN, RST_PIN);
 
-bool success_read = false;
-String userId = "";
+String card = "";
 
 void setup() {
-  // put your setup code here, to run once:
+  // We are using the hardware serial 
   Serial.begin(9600);
-  gprs.begin(9600);
 
-  pinMode(LED_RED, OUTPUT);
   pinMode(LED_GREEN, OUTPUT);
+  pinMode(LED_BLUE, OUTPUT);
   pinMode(BUZZER, OUTPUT);
 
-  Serial.println(F("Transit Payment System"));
+  Serial.println(F("TRANSIT PAYMENT SYSTEM"));
   delay(2000);
 
   Serial.println(F("Connecting to Internet ..."));
@@ -41,22 +38,38 @@ void setup() {
 }
 
 void loop() {
-  bool success_read = false;
-  success_read = MFRC522_Reader();
-  if (success_read == true) {
-    Serial.print(F("LED_RED ON"));
-    Control(BUZZER);
+   if (!reader.PICC_IsNewCardPresent()) {
+      return false;
+    }
+    if (!reader.PICC_ReadCardSerial()) {
+      return false;
+    }
+
+    for (byte i = 0; i < reader.uid.size; i++) {
+    card += String(reader.uid.uidByte[i], DEC);
+  }
+
+    card = card.substring(0, 8);
+    Serial.println("Tag ID: " + card);
+
+    reader.PICC_HaltA();
+  
+
+    Serial.print(F("Setting buzzer High to confirm read"));
+    digitalWrite(BUZZER, HIGH);
+    delay(3000);
+    digitalWrite(BUZZER, LOW);
 
     if (modem.isGprsConnected()) {
-      Serial.print(F("LED_GREEN ON"));
-      Control(LED_RED);
+      Serial.print(F("Setting Up blue green led to indicate connection"));
+      digitalWrite(LED_GREEN, HIGH);
 
       Serial.println("Making POST request...");
 
       String contentType = "application/json";
       String postData = GenerateJsonData();
 
-      int err = http.post("/api/bus/", contentType, postData);
+      int err = http.post("/", contentType, postData);
 
       if (err != 0) {
         Serial.println(F("failed to connect"));
@@ -73,48 +86,35 @@ void loop() {
       Serial.println(response);
 
       if (status == 200) {
-        Serial.println(F("Setting Buzzer High"));
-        Control(LED_GREEN);
+        Serial.println(F("Successful "));
+        digitalWrite(LED_GREEN, HIGH);
       }
 
       http.stop();
       Serial.println(F("Server disconnected"));
     }
+    else {
+      Serial.println("Failed to connect to the network ");
+
+      digitalWrite(LED_BLUE, HIGH),
+      delay(1000);
+      digitalWrite(LED_BLUE, LOW);
+      delay(1000);
+      digitalWrite(LED_BLUE, HIGH),
+      delay(1000);
+      digitalWrite(LED_BLUE, LOW);
+      delay(1000);
+    }
   }
-}
+
 
 String GenerateJsonData() {
   String fare = "500";
   String aux = "{\n\t\"userId\":\"";
-  aux.concat(String(userId));
+  aux.concat(String(card));
   aux.concat("\",\n\t\"fare\":\"");
   aux.concat(String(fare));
   aux.concat("\n}");
   return aux;
 }
 
-void Control(int comp) {
-  digitalWrite(comp, HIGH);
-  delay(2000);
-  Serial.print(F("LED_RED OFF"));
-  digitalWrite(comp, LOW);
-  delay(2000);
-}
-
-boolean MFRC522_Reader() {
-  {
-    if (!reader.PICC_IsNewCardPresent()) {
-      return false;
-    }
-    if (!reader.PICC_ReadCardSerial()) {
-      return false;
-    }
-    Serial.println(userId);
-    for (uint8_t i = 0; i < 4; i++) {
-      userId.concat(String(reader.uid.uidByte[i], DEC));
-    }
-    userId.toUpperCase();
-    reader.PICC_HaltA();
-    return true;
-  }
-}
