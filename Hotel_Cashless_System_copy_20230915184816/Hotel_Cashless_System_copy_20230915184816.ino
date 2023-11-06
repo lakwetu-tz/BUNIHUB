@@ -41,7 +41,7 @@ void setup() {
 void loop() {
   unsigned long savedtime1 = 0;
   unsigned long savedtime2 = 0;
-  const long delay1 = 3000;
+  const long delay1 = 1000;
   const long delay2 = 5000;
 
   unsigned long currenttime = millis();
